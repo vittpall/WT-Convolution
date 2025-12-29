@@ -24,13 +24,14 @@ import WTResNet as models
 from torch.utils.data import Subset
 import numpy as np
 from tqdm import tqdm
+from datasets import load_dataset
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR', nargs='?', default='../imagenet',
+parser.add_argument('data', metavar='DIR', nargs='?', default='../datasets/imagenet',
                     help='path to dataset (default: imagenet)')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='wt_resnet50',
                     choices=model_names,
@@ -83,9 +84,26 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
 parser.add_argument('--save_dir', type=str, default='./saved')
 
+from torch.utils.data import Dataset
+
+class HFMiniImageNet(Dataset):
+    def __init__(self, split, transform=None):
+        self.ds = load_dataset("timm/mini-imagenet", split=split)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, idx):
+        img = self.ds[idx]["image"]
+        label = self.ds[idx]["label"]
+        if self.transform:
+            img = self.transform(img)
+        return img, label
 
 def main():
     args = parser.parse_args()
+
     if not os.path.exists(args.save_dir):
             os.mkdir(args.save_dir)
     if args.seed is not None:
@@ -225,11 +243,36 @@ def main_worker(gpu, ngpus_per_node, args):
         train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
         val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
     else:
-        traindir = os.path.join(args.data, 'train')
-        valdir = os.path.join(args.data, 'val')
+        #traindir = os.path.join(args.data, 'train')
+        #valdir = os.path.join(args.data, 'val')
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
+        # Since i am using i normalization on the RGB images, and mini imagenet could have some grayscale images, force them to be RGB
+        train_dataset = HFMiniImageNet(
+            "train",
+            transforms.Compose([
+                transforms.Lambda(lambda img: img.convert("RGB")),
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+        )
+
+        val_dataset = HFMiniImageNet(
+            "validation",
+            transforms.Compose([
+                transforms.Lambda(lambda img: img.convert("RGB")),
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ])
+        )
+
+        #TODO convert in imagenet format and not use dataset API
+        """
         train_dataset = datasets.ImageFolder(
             traindir,
             transforms.Compose([
@@ -247,6 +290,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 transforms.ToTensor(),
                 normalize,
             ]))
+        """
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
