@@ -1,2 +1,5 @@
 *.tar
 *.pth
+logs/
+saved/
+*.pbs

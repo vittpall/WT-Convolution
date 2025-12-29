@@ -71,14 +71,12 @@ class WTConv2D(torch.nn.Module):
 
         for i in range(self.pods):
 
-            # ---- Diagonal operator (wavelet domain) ----
             yh_mod = []
             for j in range(self.levels):
                 sub = yh[j]
                 gain = self.v[i][j].view(1, 1, 3, 1, 1)
                 yh_mod.append(sub * gain)
 
-            # ---- Channel mixing in wavelet domain ----
             yl_i = self.conv[i](yl)
 
             yh_mix = []
@@ -88,7 +86,6 @@ class WTConv2D(torch.nn.Module):
                     bands.append(self.conv[i](yh_mod[j][:, :, o]))
                 yh_mix.append(torch.stack(bands, dim=2))
 
-            # ---- Thresholding (still in wavelet domain) ----
             yl_i = self.ST[i](yl_i)
 
             yh_thr = []
@@ -97,8 +94,6 @@ class WTConv2D(torch.nn.Module):
                 for o in range(3):
                     bands.append(self.ST[i](yh_mix[j][:, :, o]))
                 yh_thr.append(torch.stack(bands, dim=2))
-
-            # ---- Inverse wavelet transform ----
             
             f = self.iwt((yl_i, yh_thr))
             f = self.match_size(f, x)
