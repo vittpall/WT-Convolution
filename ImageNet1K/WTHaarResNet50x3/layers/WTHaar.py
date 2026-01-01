@@ -10,32 +10,39 @@ import torch
 #from scipy.linalg import hadamard
 from .common import SoftThresholding, find_min_power
 
-
 def haar_transform_1d(u, axis=-1, inverse=False):
-    """1D Haar Wavelet Transform (forward/inverse). Addition/subtraction only."""
     if axis != -1:
         u = torch.transpose(u, -1, axis)
-    
+
     n = u.shape[-1]
     m = int(np.log2(n))
     assert n == 1 << m, 'n must be a power of 2'
-    
+
     x = u.clone()
     norm = 1.0 / np.sqrt(2)
-    
-    for level in range(m):
-        even = x[..., ::2]
-        odd = x[..., 1::2]
-        
-        if inverse:
+
+    #equivalent to applying the filter bank + downsampling m times
+    if not inverse:
+        # forward
+        for _ in range(m):
+            # ... take all the rows, ::2 start from 0 go till the end and move by step of 2
+            even = x[..., ::2]
+            odd  = x[..., 1::2]
+
             x[..., ::2] = norm * (even + odd)
             x[..., 1::2] = norm * (even - odd)
-        else:
-            x[..., ::2] = norm * (even + odd)
-            x[..., 1::2] = norm * (even - odd)
-    
+    else:
+        # inverse (reverse order)
+        for _ in range(m):
+            a = x[..., ::2]
+            d = x[..., 1::2]
+
+            x[..., ::2] = norm * (a + d)
+            x[..., 1::2] = norm * (a - d)
+
     if axis != -1:
         x = torch.transpose(x, -1, axis)
+
     return x
 
 
@@ -44,8 +51,6 @@ def haar_transform_2d(x, inverse=False):
     x_haar = haar_transform_1d(x, axis=-1, inverse=inverse)
     x_haar = haar_transform_1d(x_haar, axis=-2, inverse=inverse)
     return x_haar
-
-#TODO implement Haar transform 1D conv
 
 class HWTConv2D(torch.nn.Module):
     """2D Haar Wavelet Conv layer - HWT-MA-Net"""
