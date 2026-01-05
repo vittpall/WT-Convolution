@@ -14,9 +14,26 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 # import torchvision.models as models
-import WHTResNet as models
+import WTHaarResNet as models
 from torch.utils.data import Subset
 from tqdm import tqdm
+from datasets import load_dataset
+from torch.utils.data import Dataset
+
+class HFMiniImageNet(Dataset):
+    def __init__(self, split, transform=None):
+        self.ds = load_dataset("timm/mini-imagenet", split=split)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, idx):
+        img = self.ds[idx]["image"]
+        label = self.ds[idx]["label"]
+        if self.transform:
+            img = self.transform(img)
+        return img, label
 
 def validate(val_loader, model, criterion, args):
 
@@ -242,7 +259,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
     parser.add_argument('data', metavar='DIR', nargs='?', default='../imagenet',
                         help='path to dataset (default: imagenet)')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='wht_resnet50',
+    parser.add_argument('-a', '--arch', metavar='ARCH', default='wthaar_resnet50',
                         choices=model_names,
                         help='model architecture: ' +
                             ' | '.join(model_names) +
@@ -309,22 +326,25 @@ if __name__ == '__main__':
     model.load_state_dict(checkpoint)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
     
-    valdir = os.path.join(args.data, 'val')
+    #valdir = os.path.join(args.data, 'val')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
     
-    val_dataset = datasets.ImageFolder(
-        valdir,
+    # Load Mini-ImageNet validation dataset using HuggingFace
+    val_dataset = HFMiniImageNet(
+        "validation",
         transforms.Compose([
+            transforms.Lambda(lambda img: img.convert("RGB")),
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             normalize,
         ]))
     
-    val_dataset_10crop = datasets.ImageFolder(
-        valdir,
+    val_dataset_10crop = HFMiniImageNet(
+        "validation",
         transforms.Compose([
+            transforms.Lambda(lambda img: img.convert("RGB")),
             transforms.Resize(256),
             transforms.TenCrop(224),
             transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),

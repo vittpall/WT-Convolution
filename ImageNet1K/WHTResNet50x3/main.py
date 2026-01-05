@@ -350,6 +350,14 @@ def main_worker(gpu, ngpus_per_node, args):
         log_val_acc1.append(val_acc1.cpu().numpy())
         log_val_acc5.append(val_acc5.cpu().numpy())
         
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_loss.npy'), np.array(log_train_loss))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_acc1.npy'), np.array(log_train_acc1))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_acc5.npy'), np.array(log_train_acc5))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_loss.npy'), np.array(log_val_loss))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc1.npy'), np.array(log_val_acc1))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc5.npy'), np.array(log_val_acc5))
+
+        
     log_train_loss = np.array(log_train_loss)
     log_train_acc1 = np.array(log_train_acc1)
     log_train_acc5 = np.array(log_train_acc5)
