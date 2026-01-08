@@ -311,6 +311,18 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
+    def load_log(path):
+        return list(np.load(path)) if os.path.exists(path) else []
+
+    if args.resume:
+        log_train_loss = load_log(os.path.join(args.save_dir, args.arch+'_log_train_loss.npy'))
+        log_train_acc1 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc1.npy'))
+        log_train_acc5 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc5.npy'))
+        log_val_loss = load_log(os.path.join(args.save_dir, args.arch+'_log_val_loss.npy'))
+        log_val_acc1 = load_log(os.path.join(args.save_dir, args.arch+'_log_val_acc1.npy'))
+        log_val_acc5 = load_log(os.path.join(args.save_dir, args.arch+'_log_val_acc5.npy'))
+
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
