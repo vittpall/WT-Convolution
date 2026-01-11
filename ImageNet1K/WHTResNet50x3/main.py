@@ -148,6 +148,7 @@ def main_worker(gpu, ngpus_per_node, args):
     log_val_acc1 = []
     log_val_acc5 = []
     args.gpu = gpu
+    total_train_time = 0.0
 
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
@@ -315,6 +316,7 @@ def main_worker(gpu, ngpus_per_node, args):
         return list(np.load(path)) if os.path.exists(path) else []
 
     if args.resume:
+        total_train_time = checkpoint.get('total_train_time', 0.0)
         log_train_loss = load_log(os.path.join(args.save_dir, args.arch+'_log_train_loss.npy'))
         log_train_acc1 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc1.npy'))
         log_train_acc5 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc5.npy'))
@@ -326,6 +328,8 @@ def main_worker(gpu, ngpus_per_node, args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
+
+        epoch_start_time = time.time()
 
         # train for one epoch
         train_loss, train_acc1, train_acc5 = train(train_loader, model, criterion, optimizer, epoch, args)
@@ -343,17 +347,22 @@ def main_worker(gpu, ngpus_per_node, args):
             print("Save acc1-best model.")
             torch.save(model.state_dict(), os.path.join(args.save_dir, args.arch+'_acc1_model.pth'))            
         print("")
+
+        epoch_time = time.time() - epoch_start_time
+        total_train_time += epoch_time
+
         
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                and args.rank % ngpus_per_node == 0):
+        if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
             save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'best_acc1': best_acc1,
-                'optimizer' : optimizer.state_dict(),
-                'scheduler' : scheduler.state_dict()
+            'epoch': epoch + 1,
+            'arch': args.arch,
+            'state_dict': model.state_dict(),
+            'best_acc1': best_acc1,
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict(),
+            'total_train_time': total_train_time
             }, is_best)
+
 
         log_train_loss.append(train_loss)
         log_train_acc1.append(train_acc1.cpu().numpy())
@@ -368,6 +377,9 @@ def main_worker(gpu, ngpus_per_node, args):
         np.save(os.path.join(args.save_dir, args.arch+'_log_val_loss.npy'), np.array(log_val_loss))
         np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc1.npy'), np.array(log_val_acc1))
         np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc5.npy'), np.array(log_val_acc5))
+
+        print(f"Total training time so far: {total_train_time/3600:.2f} hours")
+
 
         
     log_train_loss = np.array(log_train_loss)
