@@ -76,7 +76,6 @@ def haar_transform_1d(u, axis=-1, inverse=False):
             
             # Next level operates only on the approximation coefficients
             length = half
-            print(x)
     else:
         # Inverse transform
         # Reconstruct from coarsest to finest level
