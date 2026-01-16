@@ -45,10 +45,7 @@ def quantum_hadamard_pair(even, odd):
 
 
 def quantum_haar_transform_1d(u, axis=-1, inverse=False):
-    """
-    Quantum implementation using Hadamard gates.
-    Exactly matches the CORRECT hierarchical Haar transform.
-    """
+
     if axis != -1:
         u = torch.transpose(u, -1, axis)
     

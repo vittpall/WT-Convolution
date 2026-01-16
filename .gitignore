@@ -1,6 +1,6 @@
 *.tar
 *.pth
 logs/
-saved/
+*.npy
 *.pbs
 core.*
