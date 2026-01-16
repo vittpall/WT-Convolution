@@ -1,197 +1,170 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Quantum Hadamard Gate Implementation
+Exact match for the CORRECT Haar Wavelet Transform
+"""
 import numpy as np
-from qiskit import QuantumCircuit, QuantumRegister
+import torch
+from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
-from typing import Tuple
 
-class QuantumWaveletTransform:
+
+def quantum_hadamard_pair(even, odd):
     """
-    Implements Haar Wavelet Transform using Hadamard gates on quantum circuits.
-    
-    The Hadamard gate transforms basis states to create superpositions:
-    H|0⟩ = (|0⟩ + |1⟩)/√2  (average)
-    H|1⟩ = (|0⟩ - |1⟩)/√2  (difference)
-    
-    This is analogous to the classical Haar transform:
-    lo = (even + odd) / 2
-    hi = (even - odd) / 2
+    Apply quantum Hadamard transform to a single (even, odd) pair.
+    Returns (lo, hi) where:
+        lo = (even + odd) / sqrt(2)
+        hi = (even - odd) / sqrt(2)
     """
+    even_val = float(even)
+    odd_val = float(odd)
     
-    @staticmethod
-    def encode_image_to_amplitudes(image: np.ndarray) -> np.ndarray:
-        """
-        Encode image data as quantum state amplitudes.
-        Flattens and normalizes the image.
-        """
-        flat = image.flatten().astype(float)
-        # Normalize to unit vector (required for quantum states)
-        norm = np.linalg.norm(flat)
-        if norm == 0:
-            norm = 1
-        return flat / norm
+    if np.allclose([even_val, odd_val], 0):
+        return 0.0, 0.0
     
-    @staticmethod
-    def apply_1d_wavelet_qft(data: np.ndarray, levels: int = 1) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Apply 1D quantum wavelet transform using Hadamard gates.
-        
-        Args:
-            data: 1D array of data (must be power of 2 length)
-            levels: Number of decomposition levels
+    pair = np.array([even_val, odd_val])
+    norm_factor = np.linalg.norm(pair)
+    normalized_pair = pair / norm_factor
+    
+    qc = QuantumCircuit(1)
+    qc.initialize(normalized_pair, 0)
+    qc.h(0)
+    
+    sv = Statevector(qc)
+    amplitudes = sv.data
+    
+    lo = amplitudes[0].real * norm_factor * np.sqrt(2)
+    hi = amplitudes[1].real * norm_factor * np.sqrt(2)
+    
+    norm = 1.0 / np.sqrt(2)
+    lo = lo * norm
+    hi = hi * norm
+    
+    return lo, hi
+
+
+def quantum_haar_transform_1d(u, axis=-1, inverse=False):
+    """
+    Quantum implementation using Hadamard gates.
+    Exactly matches the CORRECT hierarchical Haar transform.
+    """
+    if axis != -1:
+        u = torch.transpose(u, -1, axis)
+    
+    n = u.shape[-1]
+    m = int(np.log2(n))
+    assert n == 1 << m, 'n must be a power of 2'
+    
+    x = u.clone()
+    
+    if not inverse:
+        length = n
+        for level in range(m):
+            half = length // 2
+            temp = x[..., :length].clone()
             
-        Returns:
-            lo: Low-frequency (approximation) coefficients
-            hi: High-frequency (detail) coefficients
-        """
-        n = len(data)
-        if n & (n - 1) != 0:
-            raise ValueError(f"Data length must be power of 2, got {n}")
-        
-        n_qubits = int(np.log2(n))
-        
-        # Create quantum circuit
-        qr = QuantumRegister(n_qubits, 'q')
-        qc = QuantumCircuit(qr)
-        
-        # Initialize with data as amplitudes
-        normalized_data = data / np.linalg.norm(data) if np.linalg.norm(data) > 0 else data
-        qc.initialize(normalized_data, qr)
-        
-        # Apply Hadamard gates in pyramid structure for wavelet transform
-        # Each level applies H to half the qubits
-        for level in range(min(levels, n_qubits)):
-            # Apply Hadamard to the most significant qubit at this level
-            qc.h(n_qubits - 1 - level)
-        
-        # Get final statevector
-        sv = Statevector(qc)
-        amplitudes = sv.data
-        
-        # Split into low and high frequency components
-        # After Hadamard, first half = approximation, second half = detail
-        mid = n // 2
-        lo = amplitudes[:mid] * np.sqrt(2)  # Scale back
-        hi = amplitudes[mid:] * np.sqrt(2)
-        
-        return np.abs(lo), np.abs(hi)
+            shape_prefix = temp.shape[:-1]
+            even_data = temp[..., ::2]
+            odd_data = temp[..., 1::2]
+            
+            even_flat = even_data.reshape(-1)
+            odd_flat = odd_data.reshape(-1)
+            
+            lo_results = torch.zeros_like(even_flat)
+            hi_results = torch.zeros_like(odd_flat)
+            
+            for i in range(len(even_flat)):
+                lo, hi = quantum_hadamard_pair(even_flat[i], odd_flat[i])
+                lo_results[i] = lo
+                hi_results[i] = hi
+            
+            lo_results = lo_results.reshape(shape_prefix + (half,))
+            hi_results = hi_results.reshape(shape_prefix + (half,))
+            
+            x[..., :half] = lo_results
+            x[..., half:length] = hi_results
+            
+            length = half
+    else:
+        length = 2
+        for level in range(m):
+            half = length // 2
+            temp = x[..., :length].clone()
+            approx = temp[..., :half]
+            detail = temp[..., half:length]
+            
+            shape_prefix = approx.shape[:-1]
+            approx_flat = approx.reshape(-1)
+            detail_flat = detail.reshape(-1)
+            
+            even_results = torch.zeros_like(approx_flat)
+            odd_results = torch.zeros_like(detail_flat)
+            
+            for i in range(len(approx_flat)):
+                even_val, odd_val = quantum_hadamard_pair(approx_flat[i], detail_flat[i])
+                even_results[i] = even_val
+                odd_results[i] = odd_val
+            
+            even_results = even_results.reshape(shape_prefix + (half,))
+            odd_results = odd_results.reshape(shape_prefix + (half,))
+            
+            x[..., :length:2] = even_results
+            x[..., 1:length:2] = odd_results
+            
+            length *= 2
     
-    @staticmethod
-    def quantum_wavelet_2d(image: np.ndarray, levels: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Apply 2D quantum wavelet transform using separable 1D transforms.
-        
-        Returns:
-            LL: Approximation (low-low)
-            LH: Horizontal detail (low-high)
-            HL: Vertical detail (high-low)
-            HH: Diagonal detail (high-high)
-        """
-        rows, cols = image.shape
-        
-        # Row-wise transform
-        row_results = []
-        for i in range(rows):
-            row = image[i, :]
-            if np.linalg.norm(row) > 0:
-                lo, hi = QuantumWaveletTransform.apply_1d_wavelet_qft(row, levels)
-                row_results.append((lo, hi))
-            else:
-                row_results.append((row[:cols//2], row[cols//2:]))
-        
-        # Separate low and high frequency rows
-        L_rows = np.array([r[0] for r in row_results])
-        H_rows = np.array([r[1] for r in row_results])
-        
-        # Column-wise transform on low frequencies
-        LL_cols = []
-        LH_cols = []
-        for j in range(cols // 2):
-            col = L_rows[:, j]
-            if np.linalg.norm(col) > 0:
-                lo, hi = QuantumWaveletTransform.apply_1d_wavelet_qft(col, levels)
-                LL_cols.append(lo)
-                LH_cols.append(hi)
-            else:
-                LL_cols.append(col[:rows//2])
-                LH_cols.append(col[rows//2:])
-        
-        # Column-wise transform on high frequencies
-        HL_cols = []
-        HH_cols = []
-        for j in range(cols // 2):
-            col = H_rows[:, j]
-            if np.linalg.norm(col) > 0:
-                lo, hi = QuantumWaveletTransform.apply_1d_wavelet_qft(col, levels)
-                HL_cols.append(lo)
-                HH_cols.append(hi)
-            else:
-                HL_cols.append(col[:rows//2])
-                HH_cols.append(col[rows//2:])
-        
-        LL = np.array(LL_cols).T
-        LH = np.array(LH_cols).T
-        HL = np.array(HL_cols).T
-        HH = np.array(HH_cols).T
-        
-        return LL, LH, HL, HH
+    if axis != -1:
+        x = torch.transpose(x, -1, axis)
+    
+    return x
 
 
-# Demo and comparison
-def demo_quantum_wavelet():
-    """Compare classical and quantum wavelet transforms"""
-    
-    # Create test image (power of 2 dimensions for quantum)
-    x = np.random.randint(0, 20, size=(4, 4))
-    print("Input Image:")
-    print(x)
-    print()
-    
-    # Classical approach (from your original code)
-    def classical_haar_1d(data):
-        evens, odds = data[::2], data[1::2]
-        lo = evens + odds
-        hi = evens - odds
-        return lo, hi
-    
-    # Apply classical to first row
-    print("Classical Haar Transform (first row):")
-    row = x[0, :]
-    lo_c, hi_c = classical_haar_1d(row)
-    print(f"Low:  {lo_c}")
-    print(f"High: {hi_c}")
-    print()
-    
-    # Quantum approach
-    print("Quantum Hadamard Transform (first row):")
-    qwt = QuantumWaveletTransform()
-    lo_q, hi_q = qwt.apply_1d_wavelet_qft(row.astype(float), levels=1)
-    
-    # Scale quantum results to match classical (quantum gives normalized)
-    scale = np.linalg.norm(row)
-    lo_q_scaled = lo_q * scale * np.sqrt(2)
-    hi_q_scaled = hi_q * scale * np.sqrt(2)
-    
-    print(f"Low:  {lo_q_scaled}")
-    print(f"High: {hi_q_scaled}")
-    print()
-    
-    # 2D Transform
-    print("2D Quantum Wavelet Transform:")
-    LL, LH, HL, HH = qwt.quantum_wavelet_2d(x.astype(float), levels=1)
-    print(f"LL (Approximation):\n{LL}")
-    print(f"\nLH (Horizontal Detail):\n{LH}")
-    print(f"\nHL (Vertical Detail):\n{HL}")
-    print(f"\nHH (Diagonal Detail):\n{HH}")
-    
-    # Visualize circuit for small example
-    print("\n" + "="*50)
-    print("Example Quantum Circuit for 4-element transform:")
-    print("="*50)
-    n = 4
-    qr = QuantumRegister(2, 'q')
-    qc = QuantumCircuit(qr)
-    qc.initialize([1, 2, 3, 4] / np.linalg.norm([1, 2, 3, 4]), qr)
-    qc.h(1)  # Apply Hadamard to most significant qubit
-    print(qc)
+def classical_haar_transform_1d(u, axis=-1, inverse=False):
+    """Correct classical Haar transform for comparison"""
+    if axis != -1:
+        u = torch.transpose(u, -1, axis)
+
+    n = u.shape[-1]
+    m = int(np.log2(n))
+    assert n == 1 << m, 'n must be a power of 2'
+
+    x = u.clone()
+    norm = 1.0 / np.sqrt(2)
+
+    if not inverse:
+        length = n
+        for _ in range(m):
+            half = length // 2
+            temp = x[..., :length].clone()
+            x[..., :half] = norm * (temp[..., ::2] + temp[..., 1::2])
+            x[..., half:length] = norm * (temp[..., ::2] - temp[..., 1::2])
+            length = half
+    else:
+        length = 2
+        for _ in range(m):
+            half = length // 2
+            temp = x[..., :length].clone()
+            approx = temp[..., :half]
+            detail = temp[..., half:length]
+            x[..., :length:2] = norm * (approx + detail)
+            x[..., 1:length:2] = norm * (approx - detail)
+            length *= 2
+
+    if axis != -1:
+        x = torch.transpose(x, -1, axis)
+
+    return x
+
 
 if __name__ == "__main__":
-    demo_quantum_wavelet()
+    # Single forward comparison
+    x = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+    
+    y_classical = classical_haar_transform_1d(x.clone())
+    y_quantum = quantum_haar_transform_1d(x.clone())
+    
+    print("Input:     ", x)
+    print("Classical: ", y_classical)
+    print("Quantum:   ", y_quantum)
+    print("Max diff:  ", torch.abs(y_classical - y_quantum).max().item())
