@@ -205,7 +205,7 @@ class wht_Bottleneck(nn.Module):
 
 class wht_ResNet(nn.Module):
 
-    def __init__(self, block, wht_block, layers, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block, wht_block, layers, num_classes=100, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(wht_ResNet, self).__init__()
