@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers.W import WHTConv2D
+from layers.WTHaar import HWTConv2D
 
 class ResidualBlock(nn.Module):
     def __init__(self, outheight, outwidth, inchannel, outchannel, stride=1):
@@ -10,7 +10,7 @@ class ResidualBlock(nn.Module):
             nn.Conv2d(inchannel, outchannel, kernel_size=3, stride=stride, padding=1, bias=False),
             nn.BatchNorm2d(outchannel),
             nn.ReLU(inplace=True),
-            WHTConv2D(outheight, outwidth, outchannel, outchannel, pods = 1, residual=True),
+            HWTConv2D(outheight, outwidth, outchannel, outchannel, pods = 1, residual=True),
             nn.BatchNorm2d(outchannel)
         )
         self.shortcut = nn.Sequential()
