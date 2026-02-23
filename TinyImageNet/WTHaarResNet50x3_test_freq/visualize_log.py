@@ -11,7 +11,7 @@ import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='dct_resnet18')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default='wthaar_resnet50')
     parser.add_argument('--save_dir', type=str, default='./saved')
     args = parser.parse_args()
     model = args.arch
@@ -25,33 +25,45 @@ if __name__ == '__main__':
     log_val_acc5 = np.load(os.path.join(log_dir, model+'_log_val_acc5.npy'))
     
     n_epochs = len(log_train_acc1)
+
     plt.figure(figsize=(15, 4))
+
     plt.subplot(131)
-    plt.plot(np.arange(1, n_epochs + 1), log_train_loss)  # train loss (on epoch end)
-    plt.plot(np.arange(1, n_epochs + 1), log_val_loss)         #  test loss (on epoch end)
+    plt.plot(np.arange(1, n_epochs + 1), log_train_loss)
+    plt.plot(np.arange(1, n_epochs + 1), log_val_loss)
     plt.title("Loss")
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.grid()
     plt.xlim([0, n_epochs])
     plt.legend(['Train', 'Valid'], loc="upper left")
-    
+
     plt.subplot(132)
-    plt.plot(np.arange(1, n_epochs + 1), 100-log_train_acc1)  # train loss (on epoch end)
-    plt.plot(np.arange(1, n_epochs + 1), 100-log_val_acc1)         #  test loss (on epoch end)
+    plt.plot(np.arange(1, n_epochs + 1), 100 - log_train_acc1)
+    plt.plot(np.arange(1, n_epochs + 1), 100 - log_val_acc1)
     plt.title("Center-Crop Top-1 Error")
     plt.xlabel('Epoch')
     plt.ylabel('Error (%)')
     plt.grid()
     plt.xlim([0, n_epochs])
     plt.legend(['Train', 'Valid'], loc="upper left")
-    
+
     plt.subplot(133)
-    plt.plot(np.arange(1, n_epochs + 1), 100-log_train_acc5)  # train loss (on epoch end)
-    plt.plot(np.arange(1, n_epochs + 1), 100-log_val_acc5)         #  test loss (on epoch end)
+    plt.plot(np.arange(1, n_epochs + 1), 100 - log_train_acc5)
+    plt.plot(np.arange(1, n_epochs + 1), 100 - log_val_acc5)
     plt.title("Center-Crop Top-5 Error")
     plt.xlabel('Epoch')
     plt.ylabel('Error (%)')
     plt.grid()
     plt.xlim([0, n_epochs])
     plt.legend(['Train', 'Valid'], loc="upper left")
+
+    # create directory if needed
+    os.makedirs(log_dir, exist_ok=True)
+
+    # save figure
+    save_path = os.path.join(log_dir, f"{model}_training_curves.png")
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
+    plt.close()
+
