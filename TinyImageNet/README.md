@@ -1,10 +1,18 @@
-These experiments are based on PyTorch's official ImageNet training:
+For running the test
 
-    https://github.com/pytorch/examples/tree/main/imagenet
+Choose which dataset to use:
+
+    1. TinyImageNet: The input size is 64x64.
+    2. ImageNet: The input size is 224x224.
+
+Choose which network to use:
+
+    1. HT-ResNet50: The input size is 224x224.
+    2. HT-ResNet101: The input size is 224x224.
 
 WHTResNet50x3 is the 3-path HT-ResNet50, and the input size is 224x224.
 
-WHTResNet50x3_256 is the 3-path HTResNet50, but the input size is 256x256.
+
 
 To train the network:
         
