@@ -20,26 +20,27 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 # import torchvision.models as models
-import WHTResNet as models
+import WTHaarResNet as models
 from torch.utils.data import Subset
 import numpy as np
 from tqdm import tqdm
+from datasets import load_dataset
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR', nargs='?', default='../imagenet',
+parser.add_argument('data', metavar='DIR', nargs='?', default='../datasets/imagenet',
                     help='path to dataset (default: imagenet)')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='wht_resnet50',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='wthaar_resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=80, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -83,9 +84,26 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
 parser.add_argument('--save_dir', type=str, default='./saved')
 
+from torch.utils.data import Dataset
+
+class HFMiniImageNet(Dataset):
+    def __init__(self, split, transform=None):
+        self.ds = load_dataset("timm/mini-imagenet", split=split)
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, idx):
+        img = self.ds[idx]["image"]
+        label = self.ds[idx]["label"]
+        if self.transform:
+            img = self.transform(img)
+        return img, label
 
 def main():
     args = parser.parse_args()
+
     if not os.path.exists(args.save_dir):
             os.mkdir(args.save_dir)
     if args.seed is not None:
@@ -222,18 +240,43 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     if args.dummy:
         print("=> Dummy data is used!")
-        train_dataset = datasets.FakeData(1281167, (3, 256, 256), 1000, transforms.ToTensor())
-        val_dataset = datasets.FakeData(50000, (3, 256, 256), 1000, transforms.ToTensor())
+        train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
+        val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
     else:
-        traindir = os.path.join(args.data, 'train')
-        valdir = os.path.join(args.data, 'val')
+        #traindir = os.path.join(args.data, 'train')
+        #valdir = os.path.join(args.data, 'val')
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
+        # Since i am using i normalization on the RGB images, and mini imagenet could have some grayscale images, force them to be RGB
+        train_dataset = HFMiniImageNet(
+            "train",
+            transforms.Compose([
+                transforms.Lambda(lambda img: img.convert("RGB")),
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+        )
+
+        val_dataset = HFMiniImageNet(
+            "validation",
+            transforms.Compose([
+                transforms.Lambda(lambda img: img.convert("RGB")),
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+            ])
+        )
+
+        #TODO convert in imagenet format and not use dataset API
+        """
         train_dataset = datasets.ImageFolder(
             traindir,
             transforms.Compose([
-                transforms.RandomResizedCrop(256),
+                transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
@@ -242,11 +285,12 @@ def main_worker(gpu, ngpus_per_node, args):
         val_dataset = datasets.ImageFolder(
             valdir,
             transforms.Compose([
-                transforms.Resize(292),
-                transforms.CenterCrop(256),
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
                 transforms.ToTensor(),
                 normalize,
             ]))
+        """
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -266,6 +310,18 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.evaluate:
         validate(val_loader, model, criterion, args)
         return
+
+    def load_log(path):
+        return list(np.load(path)) if os.path.exists(path) else []
+
+    if args.resume:
+        log_train_loss = load_log(os.path.join(args.save_dir, args.arch+'_log_train_loss.npy'))
+        log_train_acc1 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc1.npy'))
+        log_train_acc5 = load_log(os.path.join(args.save_dir, args.arch+'_log_train_acc5.npy'))
+        log_val_loss = load_log(os.path.join(args.save_dir, args.arch+'_log_val_loss.npy'))
+        log_val_acc1 = load_log(os.path.join(args.save_dir, args.arch+'_log_val_acc1.npy'))
+        log_val_acc5 = load_log(os.path.join(args.save_dir, args.arch+'_log_val_acc5.npy'))
+
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -305,6 +361,14 @@ def main_worker(gpu, ngpus_per_node, args):
         log_val_loss.append(val_loss)
         log_val_acc1.append(val_acc1.cpu().numpy())
         log_val_acc5.append(val_acc5.cpu().numpy())
+        
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_loss.npy'), np.array(log_train_loss))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_acc1.npy'), np.array(log_train_acc1))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_train_acc5.npy'), np.array(log_train_acc5))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_loss.npy'), np.array(log_val_loss))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc1.npy'), np.array(log_val_acc1))
+        np.save(os.path.join(args.save_dir, args.arch+'_log_val_acc5.npy'), np.array(log_val_acc5))
+
         
     log_train_loss = np.array(log_train_loss)
     log_train_acc1 = np.array(log_train_acc1)
