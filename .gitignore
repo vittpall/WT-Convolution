@@ -4,3 +4,7 @@ logs/
 *.npy
 *.pbs
 core.*
+saved/
+*.png
+__pycache__/
+*.pyc

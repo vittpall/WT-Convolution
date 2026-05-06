@@ -111,6 +111,13 @@ class HWTConv2D(torch.nn.Module):
         
         # 2D Haar Transform
         f1 = haar_transform_2d(f0)
+
+        # Remove highest-frequency Haar coefficients
+        h = f1.shape[-2]
+        w = f1.shape[-1]
+
+        # Finest-scale detail is bottom-right quadrant
+        f1[..., h//2:, w//2:] = 0.0
         
         outputs = []
         for i in range(self.pods):

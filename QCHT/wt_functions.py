@@ -44,6 +44,14 @@ def haar_matrix_builder(n: int) -> np.ndarray:
     # display(Math(matrix_to_latex(np.round(R @ B, 3))))
     return R @ B
 
+def haar_transform_1d_classical(x) -> np.ndarray:
+    # build the haar transform classically
+    H = len(x)
+    WH = haar_matrix_builder(H)
+
+    # apply the haar transform
+    return WH @ x, WH.T @ x
+
 # input np.ndarray and output np.ndarray
 def haar_transform_2d_classical(x: np.ndarray, inverse=False) -> np.ndarray:
     # build the haar transform classically
