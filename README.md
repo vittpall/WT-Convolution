@@ -1,9 +1,6 @@
-# WTHaar-Net: A Hybrid Classical–Quantum Approach (ECCV 2026)
+# WTHaar-Net: A Hybrid Classical–Quantum Approach
 
-**Source code for the ECCV 2026 paper _“WTHaar-Net: A Hybrid Classical–Quantum Approach”_**
-
-📄 **Paper link:** _To be added_
-
+**Source code for the paper _“WTHaar-Net: A Hybrid Classical–Quantum Approach”_**
 ---
 
 ## Repository Overview
