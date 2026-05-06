@@ -5,45 +5,6 @@ import numpy as np
 import torch
 from .common import SoftThresholding, find_min_power
 
-#Previous incorrect implementation, give the same results because wavalet haar transform is symmetric
-"""
-def haar_transform_1d(u, axis=-1, inverse=False):
-    if axis != -1:
-        u = torch.transpose(u, -1, axis)
-
-    n = u.shape[-1]
-    m = int(np.log2(n))
-    assert n == 1 << m, 'n must be a power of 2'
-
-    x = u.clone()
-    norm = 1.0 / np.sqrt(2)
-
-    #equivalent to applying the filter bank + downsampling m times
-    if not inverse:
-        # forward
-        for _ in range(m):
-            # ... take all the rows, ::2 start from 0 go till the end and move by step of 2
-            even = x[..., ::2].clone()
-            odd  = x[..., 1::2].clone()
-
-            x[..., ::2] = (norm * (even + odd)) 
-            x[..., 1::2] = (norm * (even - odd))
-            print(x)
-    else:
-        # inverse (reverse order)
-        for _ in range(m):
-            a = x[..., ::2]
-            d = x[..., 1::2]
-
-            x[..., ::2] = norm * (a + d)
-            x[..., 1::2] = norm * (a - d)
-
-    if axis != -1:
-        x = torch.transpose(x, -1, axis)
-
-    return x
-"""
-
 def haar_transform_1d(u, axis=-1, inverse=False):
 
     if axis != -1:

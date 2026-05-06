@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers.W import WHTConv2D
+from layers.WHT import WHTConv2D
 
 class ResidualBlock(nn.Module):
     def __init__(self, outheight, outwidth, inchannel, outchannel, stride=1):

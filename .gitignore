@@ -6,3 +6,5 @@ logs/
 core.*
 saved/
 *.png
+__pycache__/
+*.pyc

@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep  8 13:52:01 2022
-
-@author: HP
-"""
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,59 +5,39 @@ import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='wthaar_resnet50')
     parser.add_argument('--save_dir', type=str, default='./saved')
     args = parser.parse_args()
-    model = args.arch
     log_dir = args.save_dir
-    
-    log_train_loss = np.load(os.path.join(log_dir, model+'_log_train_loss.npy'))
-    log_train_acc1 = np.load(os.path.join(log_dir, model+'_log_train_acc1.npy'))
-    log_train_acc5 = np.load(os.path.join(log_dir, model+'_log_train_acc5.npy'))
-    log_val_loss = np.load(os.path.join(log_dir, model+'_log_val_loss.npy'))
-    log_val_acc1 = np.load(os.path.join(log_dir, model+'_log_val_acc1.npy'))
-    log_val_acc5 = np.load(os.path.join(log_dir, model+'_log_val_acc5.npy'))
-    
-    n_epochs = len(log_train_acc1)
 
-    plt.figure(figsize=(15, 4))
+    log_train_loss = np.load(os.path.join(log_dir, 'log_train_loss.npy'))
+    log_train_acc  = np.load(os.path.join(log_dir, 'log_train_acc.npy'))
+    log_test_loss  = np.load(os.path.join(log_dir, 'log_test_loss.npy'))
+    log_test_acc   = np.load(os.path.join(log_dir, 'log_test_acc.npy'))
 
-    plt.subplot(131)
+    n_epochs = len(log_train_loss)
+
+    plt.figure(figsize=(10, 4))
+
+    plt.subplot(1, 2, 1)
     plt.plot(np.arange(1, n_epochs + 1), log_train_loss)
-    plt.plot(np.arange(1, n_epochs + 1), log_val_loss)
+    plt.plot(np.arange(1, n_epochs + 1), log_test_loss)
     plt.title("Loss")
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.grid()
     plt.xlim([0, n_epochs])
-    plt.legend(['Train', 'Valid'], loc="upper left")
+    plt.legend(['Train', 'Test'], loc="upper right")
 
-    plt.subplot(132)
-    plt.plot(np.arange(1, n_epochs + 1), 100 - log_train_acc1)
-    plt.plot(np.arange(1, n_epochs + 1), 100 - log_val_acc1)
-    plt.title("Center-Crop Top-1 Error")
+    plt.subplot(1, 2, 2)
+    plt.plot(np.arange(1, n_epochs + 1), log_train_acc)
+    plt.plot(np.arange(1, n_epochs + 1), log_test_acc)
+    plt.title("Accuracy")
     plt.xlabel('Epoch')
-    plt.ylabel('Error (%)')
+    plt.ylabel('Accuracy')
     plt.grid()
     plt.xlim([0, n_epochs])
-    plt.legend(['Train', 'Valid'], loc="upper left")
+    plt.legend(['Train', 'Test'], loc="lower right")
 
-    plt.subplot(133)
-    plt.plot(np.arange(1, n_epochs + 1), 100 - log_train_acc5)
-    plt.plot(np.arange(1, n_epochs + 1), 100 - log_val_acc5)
-    plt.title("Center-Crop Top-5 Error")
-    plt.xlabel('Epoch')
-    plt.ylabel('Error (%)')
-    plt.grid()
-    plt.xlim([0, n_epochs])
-    plt.legend(['Train', 'Valid'], loc="upper left")
-
-    # create directory if needed
     os.makedirs(log_dir, exist_ok=True)
-
-    # save figure
-    save_path = os.path.join(log_dir, f"{model}_training_curves.png")
-    plt.savefig(save_path, dpi=300, bbox_inches="tight")
-
+    plt.savefig(os.path.join(log_dir, "training_curves.png"), dpi=300, bbox_inches="tight")
     plt.close()
-
