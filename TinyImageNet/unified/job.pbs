@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -l select=1
+#PBS -l walltime=24:00:00
+#PBS -q by-gpu
+#PBS -l filesystems=home:eagle
+#PBS -A UIC-HPC
+#PBS -o logs/
+#PBS -e logs/
+# qsub -N <name> -v ARGS="--kind haar --levels 2",SEED=42 job.pbs   (auto-resumes if resubmitted)
+cd $PBS_O_WORKDIR
+module load conda
+conda activate wt
+nvidia-smi -L
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+python train.py $ARGS --seed $SEED --workers 16

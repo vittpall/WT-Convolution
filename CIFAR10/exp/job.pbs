@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -l select=1
+#PBS -l walltime=16:00:00
+#PBS -q by-gpu
+#PBS -l filesystems=home
+#PBS -A UIC-HPC
+#PBS -o logs/
+#PBS -e logs/
+# Usage: qsub -N <config> -v CONFIG=<config> job.pbs   (runs 5 seeds in parallel on 1 GPU)
+cd $PBS_O_WORKDIR
+module load conda
+conda activate wt
+nvidia-smi -L
+for s in 42 123 777 1234 9999; do
+  python run.py --config $CONFIG --seed $s --workers 2 > logs/${CONFIG}_s${s}.log 2>&1 &
+done
+wait

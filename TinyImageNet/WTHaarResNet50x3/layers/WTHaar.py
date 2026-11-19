@@ -16,8 +16,10 @@ def haar_transform_1d(u, axis=-1, inverse=False):
     
     x = u.clone()
     #to simultate hadamard transform normalization coefficent
+    # Orthonormal Haar: 1/sqrt(2) per level is required for the inverse below
+    # to be the exact inverse of the forward pass (norm = 1.0 breaks invertibility).
     norm = 1.0 / np.sqrt(2)
-    
+
     if not inverse:
         # Forward transform
         length = n
@@ -29,10 +31,10 @@ def haar_transform_1d(u, axis=-1, inverse=False):
             # Create temporary storage
             temp = x[..., :length].clone()
             
-            # Compute approximation (low-pass): (even + odd) / sqrt(2)
+            # Compute approximation (low-pass): (even + odd)
             x[..., :half] = norm * (temp[..., ::2] + temp[..., 1::2])
             
-            # Compute detail (high-pass): (even - odd) / sqrt(2)
+            # Compute detail (high-pass): (even - odd)
             x[..., half:length] = norm * (temp[..., ::2] - temp[..., 1::2])
             
             # Next level operates only on the approximation coefficients

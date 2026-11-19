@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l select=1
+#PBS -l walltime=12:00:00
+#PBS -q by-gpu
+#PBS -l filesystems=home:eagle
+#PBS -A UIC-HPC
+#PBS -o logs/
+#PBS -e logs/
+cd $PBS_O_WORKDIR
+module load conda
+conda activate wt
+nvidia-smi -L
+python emulate.py   # resumable: skips keys already in results/emulation.json

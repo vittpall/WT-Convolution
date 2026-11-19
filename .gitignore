@@ -8,3 +8,11 @@ saved/
 *.png
 __pycache__/
 *.pyc
+CIFAR10/data/
+CIFAR10/exp/results
+TinyImageNet/unified/results
+held_jobs/
+.claude/
+*.OU
+*.ER
+QCHT/channel_cache/
