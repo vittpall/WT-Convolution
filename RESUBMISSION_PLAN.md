@@ -135,9 +135,9 @@ crossover analysis left explicit. Reviewers punished the oversell, not the idea.
 - **Haar < HT on CIFAR but wins on Tiny-ImageNet rerun** → resolution-dependent story
   ("locality pays at scale"), supported by E3 levels and N4.
 
-**Venue:** with N1+N2 executed, IEEE QCE or a DSP/ICASSP-track venue (the folder already says
-DSP2027) fits better than another CV conference; keep ECCV/CVPR only if N5 lands a convincing
-modern-backbone result.
+**Venue:** target is **DSP 2027** (IEEE International Conference on Digital Signal Processing,
+paper folder `DSP2027_WTHaarPaper_Arxiv`). The block-transform / shot-cost framing (§9) fits a
+signal-processing venue; ECCV is only the venue that rejected v1.
 
 ## 5. Immediate order of work
 1. Wait out E1/E3 (queued) → `python CIFAR10/exp/aggregate.py`.
