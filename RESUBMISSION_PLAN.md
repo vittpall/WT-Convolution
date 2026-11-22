@@ -1,7 +1,7 @@
 # WTHaar-Net — Plan Check & Novelty Ideas for Resubmission
 
 *Model check pass (Claude, 2026-11-16). Companion to the experiment sweep in `CIFAR10/exp/`
-(PBS jobs 205518–205530 and N1 jobs 205705–205708, all finished; see §6–7). Paper source: `../WT-Convolution_Paper/DSP2027_WTHaarPaper_Arxiv/main.tex`.*
+(PBS jobs 205518–205530 and N1 jobs 205705–205708, all finished; see §6–7). Paper source: `../DSP2027_WTHaar_Paper/main.tex` (IEEE format).*
 
 ---
 
@@ -136,7 +136,7 @@ crossover analysis left explicit. Reviewers punished the oversell, not the idea.
   ("locality pays at scale"), supported by E3 levels and N4.
 
 **Venue:** target is **DSP 2027** (IEEE International Conference on Digital Signal Processing,
-paper folder `DSP2027_WTHaarPaper_Arxiv`). The block-transform / shot-cost framing (§9) fits a
+paper folder `~/DSP2027_WTHaar_Paper`). The block-transform / shot-cost framing (§9) fits a
 signal-processing venue; ECCV is only the venue that rejected v1.
 
 ## 5. Immediate order of work
